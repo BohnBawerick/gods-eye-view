@@ -19,6 +19,7 @@ import { createApplicationFirms } from './layers/firms.js';
 import { createApplicationEarthquakes } from './layers/earthquakes.js';
 import { createApplicationCables } from './layers/submarineCables.js';
 import { createInfrastructureLayers } from '../data/infrastructure.js';
+import { createApplicationWaLayers } from './layers/wa.js';
 import { localGeoJsonServices } from './localGeojsonServices.js';
 import { createBhoteKoshiEventLayer } from '../data/bhoteKoshiEvent.js';
 import { createBhoteKoshiLocatorLayer } from '../data/bhoteKoshiLocator.js';
@@ -44,6 +45,7 @@ const SOURCE_METHODS = Object.freeze({
   firms: ['getSnapshot'],
   earthquakes: ['getSnapshot'],
   cables: ['fetch'],
+  wa: ['getDataset'],
 });
 
 /** Construct the current catalog without choosing any source provider.
@@ -129,6 +131,7 @@ export function createApplicationCatalog({
           installations,
         }),
         ...createInfrastructureLayers(localGeoJsonServices),
+        ...createApplicationWaLayers({ source: sources.wa }),
         createApplicationCables({ source: sources.cables }),
         createApplicationFirms({
           surface,

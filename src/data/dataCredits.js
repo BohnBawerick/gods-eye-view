@@ -67,6 +67,30 @@ export const DATA_CREDITS = [
     html: 'Earthquakes: Data courtesy of the U.S. Geological Survey',
   },
   {
+    key: 'main-roads-wa',
+    html:
+      'Western Australia road incidents and closures: ' +
+      '<a href="https://catalogue.data.wa.gov.au/" target="_blank" rel="noopener">Main Roads Western Australia via WA Open Data</a>',
+  },
+  {
+    key: 'city-of-perth-cameras',
+    html:
+      'Public camera coordinate metadata: ' +
+      '<a href="https://catalogue.data.wa.gov.au/" target="_blank" rel="noopener">City of Perth</a> (CC BY 4.0; locations only, no video)',
+  },
+  {
+    key: 'minedex',
+    html:
+      'Western Australia operating mine sites: ' +
+      '<a href="https://www.dmp.wa.gov.au/Mines-and-Minerals/Mineral-Exploration-1467.aspx" target="_blank" rel="noopener">MINEDEX / Department of Mines, Petroleum and Exploration</a> via Landgate SLIP',
+  },
+  {
+    key: 'wa-bushfire-perimeters',
+    html:
+      'Western Australia active bushfire perimeters: ' +
+      '<a href="https://catalogue.data.wa.gov.au/dataset/dbca-incident-mapping-polygons" target="_blank" rel="noopener">Department of Biodiversity, Conservation and Attractions via Landgate SLIP</a>',
+  },
+  {
     key: 'overpass',
     html:
       'Road geometry (traffic): ' +

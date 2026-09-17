@@ -361,6 +361,11 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     disposition: 'enabled-only',
   }),
   Object.freeze({
+    id: 'perth-cameras',
+    token: 'k',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
     id: 'radio',
     token: 'r',
     disposition: 'enabled+options',
@@ -384,6 +389,17 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
   }),
   Object.freeze({ id: 'traffic', token: 't', disposition: 'enabled-only' }),
   Object.freeze({ id: 'transit', token: 'j', disposition: 'enabled-only' }),
+  Object.freeze({
+    id: 'wa-bushfire-perimeters',
+    token: 'l',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
+    id: 'wa-operating-mines',
+    token: 'o',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({ id: 'wa-roads', token: 'v', disposition: 'enabled-only' }),
 ]);
 
 export const REGISTERED_LAYER_IDS = Object.freeze(
