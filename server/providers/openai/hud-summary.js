@@ -120,7 +120,8 @@ async function handleHudSummary(req, res) {
     res.setHeader('Content-Type', 'application/json');
     res.end(
       JSON.stringify({
-        error: error?.message || 'OpenAI HUD summary request failed',
+        // A raw fetch error can echo a configured URL, credentials included.
+        error: 'HUD summary request failed',
       }),
     );
   }

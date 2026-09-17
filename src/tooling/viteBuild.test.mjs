@@ -40,6 +40,10 @@ test('explicit build inputs preserve browser-only defines, plugin order and loop
     createBrowserViteConfig({ host: '::', port: '4800' }).server.port,
     4800,
   );
+  assert.equal(
+    createBrowserViteConfig({ host: '::', port: '4800' }).preview.port,
+    4800,
+  );
   assert.deepEqual(
     createBrowserViteConfig({
       host: '0.0.0.0',
@@ -69,8 +73,9 @@ test('root config retains existing named exports and standalone provider order',
   for (const [name, value] of Object.entries(providers))
     assert.equal(compatibility[name], value, name);
   const config = standaloneConfig({ mode: 'test' });
+  assert.equal(config.plugins[2].name, 'gev-host-guard');
   assert.deepEqual(
-    config.plugins.slice(2, -1).map((plugin) => plugin.name),
+    config.plugins.slice(3, -1).map((plugin) => plugin.name),
     providers.localProviderPlugins().map((plugin) => plugin.name),
   );
   assert.equal(config.plugins.at(-2).name, 'gev-key-setup');

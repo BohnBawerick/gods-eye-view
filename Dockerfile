@@ -1,7 +1,8 @@
 # Production container: bundled, minified assets served by `vite preview`, which also
-# runs every /api provider. Browser keys (GOOGLE_MAPS_API_KEY, CESIUM_ION_TOKEN) are
-# compiled into the bundle, so the build runs at container start from the runtime
-# environment and no key is ever baked into the image.
+# runs the /api data providers. The in-app Provider Settings key panel is
+# development-only, so pass keys as environment variables. Browser keys
+# (GOOGLE_MAPS_API_KEY, CESIUM_ION_TOKEN) are compiled into the bundle, so the build
+# runs at container start from the runtime environment and no key is baked into the image.
 #
 #   docker build -t gods-eye-view .
 #   docker run -p 4173:4173 --env-file .env gods-eye-view

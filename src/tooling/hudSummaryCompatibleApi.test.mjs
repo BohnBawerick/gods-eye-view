@@ -3,6 +3,28 @@ import test from 'node:test';
 import { Readable } from 'node:stream';
 import { handleHudSummary } from '../../server/providers/openai/hud-summary.js';
 
+const HUD_ENV = [
+  'GEV_HUD_LLM_BASE_URL',
+  'GEV_HUD_LLM_API_KEY',
+  'OPENAI_API_KEY',
+  'OPENAI_HUD_SUMMARY_MODEL',
+  'GEV_RATELIMIT_OPENAI_PER_MIN',
+];
+
+/** Clear every variable the handler reads and restore them after the test. */
+function isolateHudEnv(t) {
+  const saved = Object.fromEntries(
+    HUD_ENV.map((name) => [name, process.env[name]]),
+  );
+  for (const name of HUD_ENV) delete process.env[name];
+  t.after(() => {
+    for (const [name, value] of Object.entries(saved)) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+}
+
 async function callHudSummary(context) {
   const req = Readable.from([Buffer.from(JSON.stringify(context))]);
   req.method = 'POST';
@@ -23,18 +45,7 @@ async function callHudSummary(context) {
 }
 
 test('HUD summary uses an OpenAI-compatible chat API when GEV_HUD_LLM_BASE_URL is set', async (t) => {
-  const saved = { ...process.env };
-  t.after(() => {
-    for (const name of [
-      'GEV_HUD_LLM_BASE_URL',
-      'GEV_HUD_LLM_API_KEY',
-      'OPENAI_API_KEY',
-      'OPENAI_HUD_SUMMARY_MODEL',
-    ]) {
-      if (saved[name] === undefined) delete process.env[name];
-      else process.env[name] = saved[name];
-    }
-  });
+  isolateHudEnv(t);
   process.env.GEV_HUD_LLM_BASE_URL = 'https://llm.example/v1/';
   process.env.GEV_HUD_LLM_API_KEY = 'fixture-compatible-key';
   process.env.OPENAI_API_KEY = 'fixture-openai-key';
@@ -72,14 +83,7 @@ test('HUD summary uses an OpenAI-compatible chat API when GEV_HUD_LLM_BASE_URL i
 });
 
 test('HUD summary without GEV_HUD_LLM_BASE_URL still calls the OpenAI Responses API', async (t) => {
-  const saved = { ...process.env };
-  t.after(() => {
-    for (const name of ['GEV_HUD_LLM_BASE_URL', 'OPENAI_API_KEY']) {
-      if (saved[name] === undefined) delete process.env[name];
-      else process.env[name] = saved[name];
-    }
-  });
-  delete process.env.GEV_HUD_LLM_BASE_URL;
+  isolateHudEnv(t);
   process.env.OPENAI_API_KEY = 'fixture-openai-key';
 
   const calls = [];
