@@ -40,6 +40,13 @@ test('explicit build inputs preserve browser-only defines, plugin order and loop
     createBrowserViteConfig({ host: '::', port: '4800' }).server.port,
     4800,
   );
+  assert.deepEqual(
+    createBrowserViteConfig({
+      host: '0.0.0.0',
+      allowedHosts: ' globe.example.com, other.example ,',
+    }).server.allowedHosts,
+    ['localhost', '127.0.0.1', '.local', 'globe.example.com', 'other.example'],
+  );
 });
 
 test('build helper does not discover environment values or construct local providers', () => {

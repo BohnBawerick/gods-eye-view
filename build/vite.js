@@ -9,15 +9,23 @@ export function createBrowserViteConfig({
   cesiumToken,
   host = 'localhost',
   port = 4173,
+  allowedHosts = '',
 } = {}) {
+  // Extra host names (comma-separated) keep Vite's DNS-rebinding guard on when HOST
+  // opens the server to the network, for example behind a reverse proxy.
+  const extraHosts = String(allowedHosts)
+    .split(',')
+    .map((name) => name.trim())
+    .filter(Boolean);
   return {
     plugins: [cesium(), applicationHtmlPlugin(), ...plugins],
     ...(publicDir === undefined ? {} : { publicDir }),
     server: {
       host: host || 'localhost',
       port: parseInt(port, 10) || 4173,
-      allowedHosts:
-        host === '0.0.0.0' || host === '::'
+      allowedHosts: extraHosts.length
+        ? ['localhost', '127.0.0.1', '.local', ...extraHosts]
+        : host === '0.0.0.0' || host === '::'
           ? true
           : ['localhost', '127.0.0.1', '.local'],
       fs: {
