@@ -183,6 +183,7 @@
   "src/ui/layerKeyRequirement.test.mjs",
   "src/ui/layerPanel.test.mjs",
   "src/data/waOpenDataProvider.test.mjs",
+  "src/data/waTransitProvider.test.mjs",
   "src/layers/wa/geometry.test.mjs",
   "src/layers/wa/source.test.mjs",
   "src/ui/clearLayersControl.js",

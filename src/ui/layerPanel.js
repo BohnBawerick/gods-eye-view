@@ -24,6 +24,7 @@ const PANEL_GROUPS = [
       'traffic',
       'wa-roads',
       'transit',
+      'perth-scheduled-transit',
       'bikeshare',
     ],
   },
@@ -36,6 +37,7 @@ const PANEL_GROUPS = [
     ids: [
       'military-installations',
       'wa-operating-mines',
+      'wa-coastal-stations',
       'local-datacenters',
       'telegeography-submarine-cables',
       'local-dams',

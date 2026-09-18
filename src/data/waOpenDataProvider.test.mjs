@@ -137,3 +137,60 @@ test('WA roads share a 120-second cache and keep one failed feed local', async (
   assert.equal(refreshed.features.length, 2);
   assert.equal(calls, 4);
 });
+
+test('WA coastal stations keep current stations, upgrade DoT links, and isolate a failed layer', async () => {
+  const features = normalizeWaArcGis(
+    'waveStations',
+    {
+      type: 'FeatureCollection',
+      features: [
+        pointFeature({
+          location_name: 'Cottesloe',
+          depth: '17m',
+          status: '#Current',
+          live_wave:
+            'http://www.transport.wa.gov.au/imarine/cottesloe-tide-and-wave.asp',
+        }),
+        pointFeature({ location_name: 'Hillarys', status: '#Historic' }, 2),
+        pointFeature(
+          {
+            location_name: 'Elsewhere',
+            status: '#Current',
+            live_wave: 'http://example.com/readings',
+          },
+          3,
+        ),
+      ],
+    },
+    10,
+  );
+  assert.deepEqual(
+    features.map(({ title }) => title),
+    ['Cottesloe', 'Elsewhere'],
+  );
+  assert.equal(
+    features[0].url,
+    'https://www.transport.wa.gov.au/imarine/cottesloe-tide-and-wave.asp',
+  );
+  assert.equal(features[1].url, '');
+  assert.match(features[0].detail, /Wave buoy · 17m deep/);
+
+  const service = createWaDataService({
+    fetchImpl: async (url) => {
+      if (String(url).includes('/MapServer/14/')) throw new Error('down');
+      return new Response(
+        JSON.stringify({
+          type: 'FeatureCollection',
+          features: [
+            pointFeature({ station_name: 'Fremantle', status: '#Current' }),
+          ],
+        }),
+      );
+    },
+  });
+  const coastal = await service.get('coastal');
+  assert.equal(coastal.partial, true);
+  assert.deepEqual(coastal.failures, ['waveStations']);
+  assert.equal(coastal.features[0].category, 'tide');
+  assert.match(coastal.features[0].detail, /^Tide gauge/);
+});

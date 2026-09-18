@@ -25,13 +25,14 @@ test('panel presentation places Transit between Street Traffic and Bike Share in
       'traffic',
       'wa-roads',
       'transit',
+      'perth-scheduled-transit',
       'bikeshare',
     ],
   );
   assert.equal(order.filter(({ id }) => id === 'transit').length, 1);
 });
 
-test('panel presentation exposes the four Western Australia additions with labels', () => {
+test('panel presentation exposes the Western Australia additions with labels', () => {
   const source = readFileSync(
     new URL('./layerPanel.js', import.meta.url),
     'utf8',
@@ -50,6 +51,10 @@ test('panel presentation exposes the four Western Australia additions with label
     groups.Infrastructure.some(({ id }) => id === 'wa-operating-mines'),
   );
   assert.ok(groups.Events.some(({ id }) => id === 'wa-bushfire-perimeters'));
+  assert.ok(groups.Movement.some(({ id }) => id === 'perth-scheduled-transit'));
+  assert.ok(
+    groups.Infrastructure.some(({ id }) => id === 'wa-coastal-stations'),
+  );
 });
 
 test('partial feed controls distinguish incomplete records from stale data and outages', async () => {
