@@ -1,4 +1,13 @@
-import { readResponseJsonCapped } from './common/http.js';
+import {
+  readResponseBytesCapped,
+  readResponseJsonCapped,
+} from './common/http.js';
+import {
+  GTFS_FILES,
+  parseGtfsTimetable,
+  readZipEntries,
+  scheduledPositions,
+} from './waTransit.js';
 
 const ARC_GIS_ROOTS = Object.freeze({
   incidents:
@@ -11,13 +20,27 @@ const ARC_GIS_ROOTS = Object.freeze({
     'https://public-services.slip.wa.gov.au/public/rest/services/SLIP_Public_Services/Industry_and_Mining/MapServer/0',
   bushfires:
     'https://public-services.slip.wa.gov.au/public/rest/services/SLIP_Public_Services/Disaster/MapServer/2',
+  waveStations:
+    'https://public-services.slip.wa.gov.au/public/rest/services/SLIP_Public_Services/Marine_and_Estuaries/MapServer/14',
+  tideStations:
+    'https://public-services.slip.wa.gov.au/public/rest/services/SLIP_Public_Services/Marine_and_Estuaries/MapServer/17',
 });
+
+const GTFS_URL =
+  'https://www.transperth.wa.gov.au/TimetablePDFs/GoogleTransit/Production/google_transit.zip';
+const GTFS_TTL_MS = 12 * 60 * 60_000;
+const GTFS_RETRY_MS = 10 * 60_000;
+const GTFS_MAX_ZIP_BYTES = 64 * 1024 * 1024;
+const GTFS_MAX_ENTRY_BYTES = 160 * 1024 * 1024;
+const MAX_SCHEDULED_VEHICLES = 1_000;
 
 const DATASETS = Object.freeze({
   roads: Object.freeze({ ttlMs: 120_000 }),
   cameras: Object.freeze({ ttlMs: 60 * 60_000 }),
   mines: Object.freeze({ ttlMs: 60 * 60_000 }),
   bushfires: Object.freeze({ ttlMs: 120_000 }),
+  transit: Object.freeze({ ttlMs: 30_000 }),
+  coastal: Object.freeze({ ttlMs: 60 * 60_000 }),
 });
 
 const MAX_RESPONSE_BYTES = 16 * 1024 * 1024;
@@ -41,6 +64,16 @@ function boundedHttpsUrl(value) {
   } catch {
     return '';
   }
+}
+
+// The DoT station links still use http for a host that serves https.
+function transportWaUrl(value) {
+  return boundedHttpsUrl(
+    String(value || '').replace(
+      /^http:\/\/www\.transport\.wa\.gov\.au\//i,
+      'https://www.transport.wa.gov.au/',
+    ),
+  );
 }
 
 function boundedDate(value) {
@@ -255,6 +288,36 @@ export function normalizeWaArcGis(kind, payload, maxFeatures) {
           updated: boundedDate(properties.capt_date),
           geometry,
         };
+    } else if (kind === 'waveStations' || kind === 'tideStations') {
+      if (boundedText(properties.status, 40).toLowerCase() !== '#current')
+        continue;
+      const geometry = normalizeWaGeometry(feature.geometry, ['Point']);
+      const wave = kind === 'waveStations';
+      if (geometry)
+        normalized = {
+          id: normalizedId(feature, properties, `${kind}-${index}`),
+          category: wave ? 'wave' : 'tide',
+          title: boundedText(
+            properties.location_name ||
+              properties.station_name ||
+              (wave ? 'Wave station' : 'Tide station'),
+            120,
+          ),
+          detail: boundedText(
+            [
+              wave ? 'Wave buoy' : 'Tide gauge',
+              wave && properties.depth ? `${properties.depth} deep` : '',
+              'Live readings on the linked Department of Transport page',
+            ]
+              .filter(Boolean)
+              .join(' · '),
+            300,
+          ),
+          url: transportWaUrl(
+            properties.live_wave || properties.live_storm_surge,
+          ),
+          geometry,
+        };
     }
     if (normalized?.id && !ids.has(normalized.id)) {
       ids.add(normalized.id);
@@ -290,6 +353,51 @@ async function fetchArcGis(fetchImpl, root, options) {
   return payload;
 }
 
+/** Convert scheduled trip positions into the bounded client contract. */
+export function normalizeWaTransit(positions) {
+  const features = [];
+  for (const { trip, position } of positions.slice(0, MAX_SCHEDULED_VEHICLES)) {
+    const coordinates = coordinate(position);
+    const id = boundedText(trip.id, 80);
+    if (!coordinates || !id) continue;
+    features.push({
+      id,
+      category: trip.mode === 'ferry' ? 'ferry' : 'rail',
+      title: boundedText(trip.name || 'Scheduled service', 120),
+      detail: boundedText(
+        [
+          'Scheduled position from the timetable, not live GPS',
+          trip.headsign ? `towards ${trip.headsign}` : '',
+        ]
+          .filter(Boolean)
+          .join(' · '),
+        300,
+      ),
+      geometry: { type: 'Point', coordinates },
+    });
+  }
+  return features;
+}
+
+async function fetchGtfsTimetable(fetchImpl) {
+  const response = await fetchImpl(GTFS_URL, {
+    headers: { 'User-Agent': 'GodsEyeView/0.1 WA-open-data-proxy' },
+    signal: AbortSignal.timeout(180_000),
+  });
+  if (!response.ok) throw new Error(`GTFS HTTP ${response.status}`);
+  const entries = readZipEntries(
+    await readResponseBytesCapped(response, GTFS_MAX_ZIP_BYTES),
+    GTFS_FILES,
+    GTFS_MAX_ENTRY_BYTES,
+  );
+  const files = {};
+  for (const name of GTFS_FILES) {
+    if (!entries.has(name)) throw new Error(`GTFS archive lacks ${name}`);
+    files[name] = entries.get(name).toString('utf8');
+  }
+  return parseGtfsTimetable(files);
+}
+
 /** Create the independently cached acquisition service used by the middleware. */
 export function createWaDataService({
   fetchImpl = (...args) => globalThis.fetch(...args),
@@ -297,43 +405,107 @@ export function createWaDataService({
 } = {}) {
   const cache = new Map();
   const inFlight = new Map();
+  let timetable = null;
+  let timetableLoad = null;
+  let timetableRetryAt = 0;
+
+  // The timetable has its own cache so positions keep moving while a refresh fails.
+  async function transitTimetable() {
+    const current = now();
+    if (timetable && current - timetable.fetchedAt < GTFS_TTL_MS)
+      return { data: timetable.data, stale: false };
+    if (current < timetableRetryAt) {
+      if (timetable) return { data: timetable.data, stale: true };
+      throw new Error('Scheduled transit timetable unavailable');
+    }
+    timetableLoad ??= fetchGtfsTimetable(fetchImpl)
+      .then((data) => {
+        timetable = { data, fetchedAt: now() };
+        return { data, stale: false };
+      })
+      .catch((error) => {
+        timetableRetryAt = now() + GTFS_RETRY_MS;
+        if (timetable) return { data: timetable.data, stale: true };
+        throw error;
+      })
+      .finally(() => {
+        timetableLoad = null;
+      });
+    return timetableLoad;
+  }
+
+  async function loadAll(requests, label) {
+    const settled = await Promise.allSettled(
+      requests.map(([, root, outFields, limit, simplify, where]) =>
+        fetchArcGis(fetchImpl, root, { outFields, limit, simplify, where }),
+      ),
+    );
+    const features = [];
+    const failures = [];
+    for (const [index, result] of settled.entries()) {
+      const [kind, , , limit] = requests[index];
+      if (result.status === 'fulfilled')
+        features.push(...normalizeWaArcGis(kind, result.value, limit));
+      else failures.push(kind);
+    }
+    if (failures.length === requests.length)
+      throw new Error(`${label} unavailable`);
+    return { features, partial: failures.length > 0, failures };
+  }
 
   async function load(dataset) {
-    if (dataset === 'roads') {
-      const requests = [
+    if (dataset === 'roads')
+      return loadAll(
         [
-          'incidents',
-          ARC_GIS_ROOTS.incidents,
-          'FID,Location,IncidentTy,TrafficCon,TrafficImp,UpdateDate,Road,SeeMoreUrl',
-          2_000,
+          [
+            'incidents',
+            ARC_GIS_ROOTS.incidents,
+            'FID,Location,IncidentTy,TrafficCon,TrafficImp,UpdateDate,Road,SeeMoreUrl',
+            2_000,
+            0.0001,
+          ],
+          [
+            'closures',
+            ARC_GIS_ROOTS.closures,
+            'FID,Location,IncidentTy,ClosureTyp,TrafficImp,UpdateDate,Road,SeeMoreUrl',
+            2_000,
+            0.0001,
+          ],
         ],
-        [
-          'closures',
-          ARC_GIS_ROOTS.closures,
-          'FID,Location,IncidentTy,ClosureTyp,TrafficImp,UpdateDate,Road,SeeMoreUrl',
-          2_000,
-        ],
-      ];
-      const settled = await Promise.allSettled(
-        requests.map(([, root, outFields, limit]) =>
-          fetchArcGis(fetchImpl, root, {
-            outFields,
-            limit,
-            simplify: 0.0001,
-          }),
-        ),
+        'Main Roads WA feeds',
       );
-      const features = [];
-      const failures = [];
-      for (const [index, result] of settled.entries()) {
-        const [kind, , , limit] = requests[index];
-        if (result.status === 'fulfilled')
-          features.push(...normalizeWaArcGis(kind, result.value, limit));
-        else failures.push(kind);
-      }
-      if (failures.length === requests.length)
-        throw new Error('Main Roads WA feeds unavailable');
-      return { features, partial: failures.length > 0, failures };
+    if (dataset === 'coastal')
+      return loadAll(
+        [
+          [
+            'waveStations',
+            ARC_GIS_ROOTS.waveStations,
+            'objectid,location_name,depth,live_wave,status',
+            200,
+            null,
+            "status='#Current'",
+          ],
+          [
+            'tideStations',
+            ARC_GIS_ROOTS.tideStations,
+            'objectid,station_name,live_storm_surge,status',
+            200,
+            null,
+            "status='#Current'",
+          ],
+        ],
+        'Coastal station feeds',
+      );
+    if (dataset === 'transit') {
+      const { data, stale } = await transitTimetable();
+      return {
+        features: normalizeWaTransit(
+          scheduledPositions(data, now(), MAX_SCHEDULED_VEHICLES),
+        ),
+        partial: false,
+        failures: [],
+        stale,
+      };
     }
 
     const request =
@@ -444,4 +616,4 @@ export function waOpenDataProxy(options) {
   };
 }
 
-export { ARC_GIS_ROOTS, DATASETS };
+export { ARC_GIS_ROOTS, DATASETS, GTFS_URL };

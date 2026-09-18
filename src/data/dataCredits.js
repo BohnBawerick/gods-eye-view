@@ -91,6 +91,18 @@ export const DATA_CREDITS = [
       '<a href="https://catalogue.data.wa.gov.au/dataset/dbca-incident-mapping-polygons" target="_blank" rel="noopener">Department of Biodiversity, Conservation and Attractions via Landgate SLIP</a>',
   },
   {
+    key: 'wa-scheduled-transit',
+    html:
+      'Perth scheduled rail and ferry positions are estimated from GTFS timetable data, not live GPS. ' +
+      'This data is available free of charge from <a href="https://www.transperth.wa.gov.au/About/Spatial-Data-Access" target="_blank" rel="noopener">www.transperth.wa.gov.au</a> and is provided as is.',
+  },
+  {
+    key: 'wa-coastal-stations',
+    html:
+      'Western Australia tide and wave stations: ' +
+      '<a href="https://catalogue.data.wa.gov.au/" target="_blank" rel="noopener">Department of Transport WA via Landgate SLIP</a> (CC BY 4.0)',
+  },
+  {
     key: 'overpass',
     html:
       'Road geometry (traffic): ' +

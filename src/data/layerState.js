@@ -366,6 +366,11 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
     disposition: 'enabled-only',
   }),
   Object.freeze({
+    id: 'perth-scheduled-transit',
+    token: '0',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
     id: 'radio',
     token: 'r',
     disposition: 'enabled+options',
@@ -392,6 +397,11 @@ export const LAYER_STATE_REGISTRY = Object.freeze([
   Object.freeze({
     id: 'wa-bushfire-perimeters',
     token: 'l',
+    disposition: 'enabled-only',
+  }),
+  Object.freeze({
+    id: 'wa-coastal-stations',
+    token: 'y',
     disposition: 'enabled-only',
   }),
   Object.freeze({

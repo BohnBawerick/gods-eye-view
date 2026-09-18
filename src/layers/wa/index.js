@@ -14,8 +14,16 @@ const LAYERS = Object.freeze([
     pointSize: 10,
     distance: 8_000_000,
     legend: Object.freeze([
-      Object.freeze({ label: 'Incident', color: '#ff4d4d' }),
-      Object.freeze({ label: 'Closure', color: '#ff9f43' }),
+      Object.freeze({
+        category: 'incident',
+        label: 'Incident',
+        color: '#ff4d4d',
+      }),
+      Object.freeze({
+        category: 'closure',
+        label: 'Closure',
+        color: '#ff9f43',
+      }),
     ]),
   }),
   Object.freeze({
@@ -29,7 +37,11 @@ const LAYERS = Object.freeze([
     pointSize: 7,
     distance: 400_000,
     legend: Object.freeze([
-      Object.freeze({ label: 'Location only', color: '#00d4ff' }),
+      Object.freeze({
+        category: 'camera',
+        label: 'Location only',
+        color: '#00d4ff',
+      }),
     ]),
   }),
   Object.freeze({
@@ -43,7 +55,11 @@ const LAYERS = Object.freeze([
     pointSize: 6,
     distance: 9_000_000,
     legend: Object.freeze([
-      Object.freeze({ label: 'Operating site', color: '#f5c542' }),
+      Object.freeze({
+        category: 'mine',
+        label: 'Operating site',
+        color: '#f5c542',
+      }),
     ]),
   }),
   Object.freeze({
@@ -56,7 +72,55 @@ const LAYERS = Object.freeze([
     polygonColor: '#ff5b2e',
     distance: 9_000_000,
     legend: Object.freeze([
-      Object.freeze({ label: 'Active perimeter', color: '#ff5b2e' }),
+      Object.freeze({
+        category: 'bushfire',
+        label: 'Active perimeter',
+        color: '#ff5b2e',
+      }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'perth-scheduled-transit',
+    dataset: 'transit',
+    name: 'Perth Rail & Ferry (Scheduled)',
+    icon: '⇄',
+    source: 'Public GTFS timetable',
+    updateInterval: 30_000,
+    pointColor: '#4fc7b5',
+    categoryColors: Object.freeze({ rail: '#4fc7b5', ferry: '#3d8bff' }),
+    pointSize: 8,
+    distance: 3_000_000,
+    legend: Object.freeze([
+      Object.freeze({
+        category: 'rail',
+        label: 'Train (timetable, not GPS)',
+        color: '#4fc7b5',
+      }),
+      Object.freeze({
+        category: 'ferry',
+        label: 'Ferry (timetable, not GPS)',
+        color: '#3d8bff',
+      }),
+    ]),
+  }),
+  Object.freeze({
+    id: 'wa-coastal-stations',
+    dataset: 'coastal',
+    name: 'WA Tide & Wave Stations',
+    icon: '≈',
+    source: 'Department of Transport WA / Landgate SLIP',
+    updateInterval: 60 * 60_000,
+    pointColor: '#7fdbff',
+    categoryColors: Object.freeze({ wave: '#7fdbff', tide: '#b18cff' }),
+    pointSize: 8,
+    distance: 9_000_000,
+    legend: Object.freeze([
+      Object.freeze({ category: 'wave', label: 'Wave buoy', color: '#7fdbff' }),
+      Object.freeze({
+        category: 'tide',
+        label: 'Tide gauge',
+        color: '#b18cff',
+      }),
     ]),
   }),
 ]);
@@ -67,6 +131,7 @@ function createWaLayer(config, source) {
   let request = null;
   let enabled = false;
   let count = 0;
+  let categoryCounts = new Map();
   let lastUpdate = null;
   let error = null;
   let loading = false;
@@ -91,7 +156,9 @@ function createWaLayer(config, source) {
           position,
           point: {
             pixelSize: config.pointSize,
-            color: color(config.pointColor),
+            color: color(
+              config.categoryColors?.[feature.category] ?? config.pointColor,
+            ),
             outlineColor: Cesium.Color.BLACK.withAlpha(0.8),
             outlineWidth: 1,
             heightReference: Cesium.HeightReference.CLAMP_TO_GROUND,
@@ -198,6 +265,9 @@ function createWaLayer(config, source) {
         dataSource.entities.removeAll();
         for (const entity of next) dataSource.entities.add(entity);
         count = payload.features.length;
+        categoryCounts = new Map();
+        for (const { category } of payload.features)
+          categoryCounts.set(category, (categoryCounts.get(category) ?? 0) + 1);
         lastUpdate = Number(payload.fetchedAt) || Date.now();
         stale = payload.stale === true;
         partial = payload.partial === true;
@@ -223,6 +293,7 @@ function createWaLayer(config, source) {
       dataSource = null;
       viewer = null;
       count = 0;
+      categoryCounts = new Map();
       lastUpdate = null;
       error = null;
       stale = false;
@@ -230,7 +301,13 @@ function createWaLayer(config, source) {
     },
 
     getRowControls() {
-      return { chips: [], legend: config.legend };
+      return {
+        chips: [],
+        legend: config.legend.map((item) => ({
+          ...item,
+          count: categoryCounts.get(item.category) ?? 0,
+        })),
+      };
     },
 
     getStats() {
@@ -239,7 +316,7 @@ function createWaLayer(config, source) {
   };
 }
 
-/** Construct the four fixed Western Australia open-data layers. */
+/** Construct the fixed Western Australia open-data layers. */
 export function createWaOpenDataLayers({ source }) {
   if (typeof source?.getDataset !== 'function')
     throw new TypeError('A WA open-data source is required');

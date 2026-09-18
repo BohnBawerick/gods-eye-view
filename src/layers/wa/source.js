@@ -1,4 +1,11 @@
-const DATASETS = new Set(['roads', 'cameras', 'mines', 'bushfires']);
+const DATASETS = new Set([
+  'roads',
+  'cameras',
+  'mines',
+  'bushfires',
+  'transit',
+  'coastal',
+]);
 
 /** Read one server-normalized WA dataset. */
 export function createWaOpenDataSource({
