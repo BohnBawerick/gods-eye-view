@@ -22,18 +22,20 @@ const PANEL_GROUPS = [
       'military',
       'ais-live-vessels',
       'traffic',
+      'wa-roads',
       'transit',
       'bikeshare',
     ],
   },
   {
     label: 'Cameras',
-    ids: ['cctv', 'alpr-cameras'],
+    ids: ['cctv', 'perth-cameras', 'alpr-cameras'],
   },
   {
     label: 'Infrastructure',
     ids: [
       'military-installations',
+      'wa-operating-mines',
       'local-datacenters',
       'telegeography-submarine-cables',
       'local-dams',
@@ -41,7 +43,12 @@ const PANEL_GROUPS = [
   },
   {
     label: 'Events',
-    ids: ['rocket-launches', 'earthquakes', 'local-firms'],
+    ids: [
+      'rocket-launches',
+      'earthquakes',
+      'local-firms',
+      'wa-bushfire-perimeters',
+    ],
   },
   {
     label: 'Utilities',

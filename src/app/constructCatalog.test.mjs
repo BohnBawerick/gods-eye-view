@@ -39,8 +39,15 @@ test('catalogs construct distinct layers and classification from their supplied 
     signal: b.signal,
     surface: fixtureSurface(b.signal),
   });
-  assert.equal(first.layers.length, 21);
+  assert.equal(first.layers.length, 25);
   assert.ok(first.get('transit'));
+  assert.equal(first.get('wa-roads').name, 'WA Road Incidents & Closures');
+  assert.equal(first.get('perth-cameras').name, 'Perth Public Cameras');
+  assert.equal(first.get('wa-operating-mines').name, 'WA Operating Mines');
+  assert.equal(
+    first.get('wa-bushfire-perimeters').name,
+    'WA Bushfire Perimeters',
+  );
   const order = first.layers.map(({ id }) => id);
   assert.deepEqual(
     order.slice(order.indexOf('traffic'), order.indexOf('directions') + 1),

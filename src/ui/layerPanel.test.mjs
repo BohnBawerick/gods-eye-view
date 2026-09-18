@@ -23,11 +23,33 @@ test('panel presentation places Transit between Street Traffic and Bike Share in
       'military',
       'ais-live-vessels',
       'traffic',
+      'wa-roads',
       'transit',
       'bikeshare',
     ],
   );
   assert.equal(order.filter(({ id }) => id === 'transit').length, 1);
+});
+
+test('panel presentation exposes the four Western Australia additions with labels', () => {
+  const source = readFileSync(
+    new URL('./layerPanel.js', import.meta.url),
+    'utf8',
+  );
+  const declarations = source.slice(
+    source.indexOf('const PANEL_GROUPS ='),
+    source.indexOf('const PANEL_POSITIONS ='),
+  );
+  const order = JSON.parse(
+    runInNewContext(`${declarations}\nJSON.stringify(PANEL_ORDER)`),
+  );
+  const groups = Object.groupBy(order, ({ label }) => label);
+  assert.ok(groups.Movement.some(({ id }) => id === 'wa-roads'));
+  assert.ok(groups.Cameras.some(({ id }) => id === 'perth-cameras'));
+  assert.ok(
+    groups.Infrastructure.some(({ id }) => id === 'wa-operating-mines'),
+  );
+  assert.ok(groups.Events.some(({ id }) => id === 'wa-bushfire-perimeters'));
 });
 
 test('partial feed controls distinguish incomplete records from stale data and outages', async () => {

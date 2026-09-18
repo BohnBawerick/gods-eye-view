@@ -20,6 +20,7 @@ import { trackBackfillProxies } from './aircraft/tracks.js';
 import { openAiRealtimeProxy } from './openai.js';
 import { googlePlacesContextProxy } from './places.js';
 import { keySetupEndpoint } from '../standalone/key-setup.js';
+import { waOpenDataProxy } from './wa.js';
 
 /** Construct the local provider plugins in their established order. */
 function localProviderPlugins() {
@@ -45,6 +46,7 @@ function localProviderPlugins() {
     trackBackfillProxies(),
     openAiRealtimeProxy(),
     googlePlacesContextProxy(),
+    waOpenDataProxy(),
     keySetupEndpoint(),
   ];
 }
@@ -69,6 +71,12 @@ export { keylessGooglePlacesResponse } from './places.js';
 export { adsbLolFallbackAnchor } from './aircraft/opensky.js';
 export { readResponseTextCapped } from './common/http.js';
 export { readResponseJsonCapped } from './common/http.js';
+export {
+  createWaDataService,
+  normalizeWaArcGis,
+  normalizeWaGeometry,
+  waOpenDataProxy,
+} from './wa.js';
 export { coalesceProxyRequest } from './common/http.js';
 export { requiredFiniteQueryNumber } from './common/query.js';
 export { isOverpassBoundaryQuery } from './overpass/query.js';
