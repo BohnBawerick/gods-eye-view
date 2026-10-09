@@ -151,6 +151,8 @@ export function createIngestion({
   function vesselDisplayRow(record) {
     return {
       mmsi: record.id,
+      pinned: record.pinned,
+      stale: record.stale,
       reference: record.reference,
       lat: record.latitude,
       lon: record.longitude,

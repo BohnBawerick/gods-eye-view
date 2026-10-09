@@ -1112,7 +1112,7 @@ export function createGevActionRunner({
     }
 
     if (name === 'track_entity') {
-      return trackEntity(viewer, dataManager, styleManager, args);
+      return trackEntity(viewer, dataManager, styleManager, args, runOptions);
     }
 
     if (name === 'stop_tracking') {
@@ -2052,7 +2052,21 @@ export function formatTrackedEntityLabel(found, query = '') {
 }
 
 /** Finds and tracks/selects an entity by spoken query across layer families. */
-async function trackEntity(viewer, dataManager, styleManager, args = {}) {
+async function trackEntity(
+  viewer,
+  dataManager,
+  styleManager,
+  args = {},
+  runOptions = {},
+) {
+  const current = () =>
+    !runOptions.signal?.aborted &&
+    (!runOptions.isCurrent || runOptions.isCurrent());
+  const cancelled = () => ({
+    ok: false,
+    action: 'track_entity',
+    error: 'Vessel lookup cancelled',
+  });
   const query = String(args.query || '').trim();
   if (!query) throw new Error('track_entity needs a query');
 
@@ -2120,14 +2134,69 @@ async function trackEntity(viewer, dataManager, styleManager, args = {}) {
   const skippedDisabled = [];
 
   for (const family of families) {
-    if (!dataManager.isEnabled(family.layerId)) {
-      skippedDisabled.push(family.layerId);
-      continue;
-    }
+    if (!current()) return cancelled();
     const module = dataManager.layers.get(family.layerId)?.module;
     if (!module || typeof module.findByQuery !== 'function') continue;
-    const found = module.findByQuery(query);
-    if (!found) continue;
+    const enabled = dataManager.isEnabled(family.layerId);
+    let found = enabled ? module.findByQuery(query) : null;
+    let observation = null;
+    // Name ambiguity must be checked across the full cache even if one match
+    // happens to be in the browser window. Exact numeric hits need no round trip.
+    if (
+      family.kind === 'vessel' &&
+      module.lookupVessels &&
+      (!found || !/^\d+$/.test(query))
+    ) {
+      let lookup;
+      try {
+        lookup = await module.lookupVessels(query, {
+          signal: runOptions.signal,
+        });
+      } catch (error) {
+        if (!current()) return cancelled();
+        return { ok: false, action: 'track_entity', error: error.message };
+      }
+      if (!current()) return cancelled();
+      if (lookup?.total > 1)
+        return {
+          ok: false,
+          action: 'track_entity',
+          kind: 'vessel',
+          query,
+          error: 'Several vessels match. Choose a vessel by MMSI.',
+          candidates: lookup.candidates,
+          total: lookup.total,
+          source: lookup.source,
+        };
+      observation = lookup?.candidates?.[0] || null;
+      if (lookup)
+        found = observation
+          ? {
+              mmsi: observation.id,
+              name: observation.name,
+              latitude: observation.latitude,
+              longitude: observation.longitude,
+            }
+          : null;
+    }
+    if (!found) {
+      if (!enabled) skippedDisabled.push(family.layerId);
+      continue;
+    }
+    if (!enabled) {
+      if (family.kind !== 'vessel' || !observation) continue;
+      await dataManager.setEnabled(family.layerId, true, {
+        origin: 'tool',
+        signal: runOptions.signal,
+      });
+      if (!current()) return cancelled();
+      if (!dataManager.isEnabled(family.layerId))
+        return {
+          ok: false,
+          action: 'track_entity',
+          error: 'The vessel layer could not be enabled in this view.',
+        };
+    }
 
     if (
       family.kind === 'vessel' &&
@@ -2148,15 +2217,18 @@ async function trackEntity(viewer, dataManager, styleManager, args = {}) {
       'track_entity',
       () => {
         let trackedOk = false;
+        if (!current()) return cancelled();
         if (family.kind === 'vessel') {
+          if (observation) module.showVessel?.(observation);
           trackedOk = !!module.selectById?.(found.mmsi);
-          flyToLandmark(viewer, found.latitude, found.longitude, {
-            range: 6000,
-            pitch: -45,
-            heading: 0,
-            buildingHeight: 0,
-            duration: 2.0,
-          });
+          if (trackedOk)
+            flyToLandmark(viewer, found.latitude, found.longitude, {
+              range: 6000,
+              pitch: -45,
+              heading: 0,
+              buildingHeight: 0,
+              duration: 2.0,
+            });
         } else if (family.kind === 'satellite') {
           trackedOk = !!module.trackById?.(found.noradId, { origin: 'voice' });
         } else {
@@ -2173,6 +2245,13 @@ async function trackEntity(viewer, dataManager, styleManager, args = {}) {
           // `registration` is absent on vessels/satellites and simply falls
           // through to their own name/id links.
           label: formatTrackedEntityLabel(found, query),
+          ...(family.kind === 'vessel'
+            ? {
+                observedAtMs: (observation || found).observedAtMs,
+                stale: (observation || found).stale,
+                source: 'AISStream',
+              }
+            : {}),
           latitude: found.latitude ?? null,
           longitude: found.longitude ?? null,
           altitudeM: Number.isFinite(found.altitudeM)

@@ -1,3 +1,4 @@
+import { isVesselStale, formatVesselLastSeen } from './recordPolicy.js';
 import {
   accentForVesselType,
   normalizeVesselType,
@@ -17,7 +18,7 @@ export function createCards({
     if (!el) return;
 
     // Pinned vessels missing from recent refreshes get a stale marker
-    const stale = (record.missedRefreshes || 0) > 0;
+    const stale = isVesselStale(record);
     el.classList.add('active');
     el.textContent = [
       `AIS: ${trimHudValue(record.name, 32)}`,
@@ -57,6 +58,14 @@ export function createCards({
       parts.push(formatSpeed(record.speed));
     const direction = record.heading ?? record.course;
     if (Number.isFinite(direction)) parts.push(`${Math.round(direction)}°`);
+    if (isVesselStale(record))
+      parts.push(
+        formatVesselLastSeen(
+          record.lastPositionEpoch == null
+            ? null
+            : record.lastPositionEpoch * 1000,
+        ),
+      );
     return {
       id: vesselOverlayEntryId(record),
       actionable: Boolean(record?.mmsi),
@@ -64,7 +73,9 @@ export function createCards({
         components.rendering.getVisual(record).billboard?.position ||
         components.rendering.getVisual(record).position,
       gapPx: 10,
-      accent: accentForVesselType(record.type),
+      accent: isVesselStale(record)
+        ? '#e5b86e'
+        : accentForVesselType(record.type),
       title: trimHudValue(displayVesselName(record), 26),
       details: parts.length ? [parts.join(' · ')] : [],
       selected: false,
@@ -92,7 +103,16 @@ export function createCards({
     ];
     const destination = String(record.destination || '').trim();
     if (destination) details.push(`→ ${trimHudValue(destination, 24)}`);
-    const stale = (record.missedRefreshes || 0) > 0;
+    const stale = isVesselStale(record);
+    if (record.imo) details.push(`IMO ${record.imo}`);
+    if (record.pinned || stale)
+      details.push(
+        formatVesselLastSeen(
+          record.lastPositionEpoch == null
+            ? null
+            : record.lastPositionEpoch * 1000,
+        ),
+      );
     details.push(
       `MMSI ${record.mmsi || '--'} · ${formatPositionTime(record)}${stale ? ' · STALE' : ''}`,
     );
@@ -103,7 +123,7 @@ export function createCards({
         components.rendering.getVisual(record).billboard?.position ||
         components.rendering.getVisual(record).position,
       gapPx: 12,
-      accent: accentForVesselType(record.type),
+      accent: stale ? '#e5b86e' : accentForVesselType(record.type),
       title: trimHudValue(displayVesselName(record), 32),
       details,
       selected: true,

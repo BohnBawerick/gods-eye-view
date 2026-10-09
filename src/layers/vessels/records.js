@@ -22,6 +22,8 @@ export function normalizeVessel(row) {
     heading: finiteNumber(row.heading),
     lastPositionUtc: String(row.last_position_UTC || ''),
     lastPositionEpoch: finiteNumber(row.last_position_epoch),
+    pinned: row.pinned === true,
+    stale: row.stale === true,
     missedRefreshes: 0,
   };
 }
@@ -76,6 +78,8 @@ export class VesselRecords {
         record.heading = next.heading;
         record.lastPositionUtc = next.lastPositionUtc;
         record.lastPositionEpoch = next.lastPositionEpoch;
+        record.pinned = next.pinned;
+        record.stale = next.stale;
         record.missedRefreshes = 0;
 
         effects.updated(record, before);

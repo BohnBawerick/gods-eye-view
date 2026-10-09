@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { isVesselStale } from './recordPolicy.js';
 import {
   AIS_DEGRADED_STATUSES,
   AIS_HEALTHY_STATUSES,
@@ -241,8 +242,41 @@ export function createQueries({
 
     statsRefreshInterval: 1000,
 
+    /** Search every retained server vessel, including when this layer is off. */
+    lookupVessels(query, options) {
+      if (!vesselState._source.lookupVessels) return Promise.resolve(null);
+      return vesselState._source.lookupVessels(query, options);
+    },
+
+    /** Read deployment-wide pins without enabling the layer. */
+    getWatchlist(options) {
+      return (
+        vesselState._source.getWatchlist?.(options) ??
+        Promise.resolve({ entries: [] })
+      );
+    },
+
+    /** Persist a pin through the configured source. */
+    setVesselPinned(mmsi, pinned, options) {
+      if (!vesselState._source.setVesselPinned)
+        throw new Error('This vessel source does not support pins.');
+      return vesselState._source.setVesselPinned(mmsi, pinned, options);
+    },
+
+    /** Admit a lookup result through the ordinary record and rendering owners. */
+    showVessel(observation) {
+      if (!state.feed.enabled || !state.viewer) return false;
+      components.snapshots.reconcileVessels(
+        state.viewer,
+        [components.ingestion.vesselDisplayRow(observation)],
+        { complete: false },
+      );
+      state.feed.count = state.records.all.length;
+      return state.records.byMmsi.has(observation.id);
+    },
+
     /**
-     * Find a vessel by exact MMSI or case-insensitive name substring.
+     * Find a vessel by exact MMSI, IMO or an unambiguous name substring.
      * @param {string|number} query MMSI or partial vessel name.
      * @returns {{ mmsi: string, name: string, position: Cesium.Cartesian3, latitude: number, longitude: number, speedKt: number|null, course: number|null, type: string }|null}
      */
@@ -255,16 +289,19 @@ export function createQueries({
 
       let record = null;
       if (/^\d+$/.test(q)) {
-        record = state.records.byMmsi.get(q) || null;
+        record =
+          state.records.byMmsi.get(q) ||
+          records.find((r) => r.imo === q && q !== '0') ||
+          null;
       }
       if (!record) {
         const lower = q.toLowerCase();
-        record =
-          records.find((r) =>
-            String(r.name || '')
-              .toLowerCase()
-              .includes(lower),
-          ) || null;
+        const matches = records.filter((r) =>
+          String(r.name || '')
+            .toLowerCase()
+            .includes(lower),
+        );
+        record = matches.length === 1 ? matches[0] : null;
       }
       if (!record) return null;
 
@@ -274,6 +311,12 @@ export function createQueries({
       if (!position) return null;
       return {
         mmsi: record.mmsi,
+        imo: record.imo,
+        observedAtMs:
+          record.lastPositionEpoch == null
+            ? null
+            : record.lastPositionEpoch * 1000,
+        stale: isVesselStale(record),
         name: record.name,
         position,
         latitude: record.lat,

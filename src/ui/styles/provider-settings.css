@@ -352,13 +352,6 @@ body.scene-playback-mode #key-setup {
   display: none;
 }
 
-@media (max-width: 620px) {
-  /* Clear the dock. Desktop-first app; this is a courtesy, not a layout. */
-  #key-setup-chip {
-    bottom: 5.8rem;
-  }
-}
-
 /* Provider Settings additions: externally-managed badge + per-row remove. */
 .key-setup-external {
   padding: 0.05rem 0.3rem;

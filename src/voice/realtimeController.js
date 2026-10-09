@@ -287,7 +287,10 @@ export class GevRealtimeController extends RealtimeFacade {
     this.ui.root.dataset.status = status;
     if (status === 'error') this.ui.root.classList.remove('error-dismissed');
     this.updateVoiceButtonLabel();
-    this.ui.status.textContent = STATUS[status] || STATUS.idle;
+    this.ui.status.textContent =
+      status === 'listening' && this._input.textOnly
+        ? 'READY'
+        : STATUS[status] || STATUS.idle;
     const resolvedDetail =
       status === 'listening' && this.pushToTalkMode
         ? this.pushToTalkKeyHeld
@@ -299,8 +302,12 @@ export class GevRealtimeController extends RealtimeFacade {
         ? 'VOICE UNAVAILABLE'
         : resolvedDetail ||
           (status === 'idle' ? 'VOICE STANDBY' : 'VOICE ACTIVE');
-    this.ui.detail.textContent = primaryDetail;
-    this.ui.detail.title = primaryDetail;
+    const visibleDetail =
+      this._input.textOnly && status === 'listening'
+        ? 'MICROPHONE OFF'
+        : primaryDetail;
+    this.ui.detail.textContent = visibleDetail;
+    this.ui.detail.title = visibleDetail;
     if (this.ui.errorDetail) {
       this.ui.errorDetail.textContent =
         status === 'error'

@@ -28,6 +28,7 @@ export class RealtimeInput {
     this.visualizerOutputData = null;
     this.visualizerGeneration = 0;
     this.visualizerSpeaker = 'idle';
+    this.textOnly = false;
     this.pushToTalkMode = false;
     this.pushToTalkKeyHeld = false;
     this.spaceKeyHeld = false;
@@ -350,7 +351,12 @@ export class RealtimeInput {
    */
   updateVoiceButtonLabel() {
     if (!this.ui.buttonLabel) return;
-    this.ui.buttonLabel.textContent = 'MIC';
+    this.ui.buttonLabel.textContent = this.textOnly ? 'STOP' : 'MIC';
+    if (this.textOnly && this.ui.helpDetail) {
+      this.ui.helpDetail.textContent =
+        'Microphone off. Stop this session, then press MIC to speak.';
+      return;
+    }
     if (this.ui.helpDetail) {
       this.ui.helpDetail.textContent = resolveVoiceControlHint(
         this.pushToTalkMode,
@@ -373,6 +379,7 @@ export class RealtimeInput {
   }
 
   resetSession() {
+    this.textOnly = false;
     this.pushToTalkMode = false;
     this.pushToTalkKeyHeld = false;
     this.spaceKeyHeld = false;
@@ -380,6 +387,7 @@ export class RealtimeInput {
     if (this.ui?.root) {
       delete this.ui.root.dataset.pushToTalk;
       delete this.ui.root.dataset.microphone;
+      delete this.ui.root.dataset.textOnly;
     }
   }
 

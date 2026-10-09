@@ -1450,8 +1450,20 @@ test('buildSelectedVesselCard: destination line + STALE marker; placeholders for
   assert.deepEqual(card.details, [
     'TANKER · --KT · --°',
     '→ ROTTERDAM',
+    'Position time unknown',
     'MMSI 353136000 · POS: LIVE · STALE',
   ]);
+});
+
+test('watched positions age even when every snapshot still contains the ship', () => {
+  const card = buildSelectedVesselCard(makeRecord({
+    pinned: true, imo: '9447627', missedRefreshes: 0,
+    lastPositionEpoch: Math.floor(Date.now() / 1000) - 7200,
+  }));
+  assert.equal(card.accent, '#e5b86e');
+  assert.ok(card.details.some(line => line === 'IMO 9447627'));
+  assert.ok(card.details.some(line => /^Last seen 2h/.test(line)));
+  assert.ok(card.details.some(line => line.includes('STALE')));
 });
 
 // --- Vertical datum (h = N + lift) ------------------------------------------

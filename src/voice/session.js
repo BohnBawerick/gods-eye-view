@@ -146,6 +146,11 @@ export function createVoiceSession({ createAdapter, runner, signal }) {
           emit({ type: 'state', state: 'idle', detail: 'Voice off' });
       }
     },
+    interrupt() {
+      if (disposed) return;
+      emit({ type: 'interruption', reason: 'typed-command' });
+      adapter.interrupt?.();
+    },
     sendText: (text) => !disposed && adapter.sendText(text),
     sendMapEvent: (event) => !disposed && adapter.sendMapEvent(event),
     destroy: () => dispose(),

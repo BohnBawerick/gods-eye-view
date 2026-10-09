@@ -45,6 +45,44 @@ test('every live basemap is reachable by its own id — no enum value without a 
   );
 });
 
+test('track_entity resolves an off-window vessel, enables its layer and refuses ambiguity or cancelled lookups', async () => {
+  globalThis.window = globalThis.window || { clearTimeout, setTimeout, requestIdleCallback: null };
+  const { viewer, styleManager } = createVoiceNavigationHarness();
+  const vessel = { id: '259069000', name: 'SKANDI PEREGRINO', latitude: -32.03579, longitude: 115.66655, observedAtMs: 1000, stale: true };
+  let enabled = false;
+  let shown = null;
+  let selected = null;
+  let lookup = async () => ({ candidates: [vessel], total: 1 });
+  const module = {
+    findByQuery: () => null,
+    lookupVessels: (...args) => lookup(...args),
+    showVessel: (row) => { shown = row; },
+    selectById: (id) => { selected = id; return true; },
+  };
+  const runner = createGevActionRunner({ viewer, styleManager, dataManager: {
+    layers: new Map([['ais-live-vessels', { module }]]), getAll: () => [],
+    isEnabled: () => enabled, setEnabled: async (_id, value) => { enabled = value; },
+  } });
+  const result = await runner('track_entity', { query: '9447627' });
+  assert.equal(result.ok, true);
+  assert.equal(enabled, true);
+  assert.equal(shown, vessel);
+  assert.equal(selected, vessel.id);
+  assert.equal(result.stale, true);
+  assert.equal(result.observedAtMs, 1000);
+  shown = selected = null;
+  lookup = async () => ({ candidates: [vessel, { ...vessel, id: '710120300' }], total: 2 });
+  const ambiguous = await runner('track_entity', { query: 'PEREGRINO' });
+  assert.equal(ambiguous.ok, false);
+  assert.equal(ambiguous.candidates.length, 2);
+  assert.equal(selected, null);
+  const controller = new AbortController();
+  lookup = async () => { controller.abort(); return { candidates: [vessel], total: 1 }; };
+  const cancelled = await runner('track_entity', { query: vessel.id }, { signal: controller.signal });
+  assert.equal(cancelled.ok, false);
+  assert.equal(shown, null);
+});
+
 test('track_entity narration names aircraft callsign → registration → icao24', () => {
   const found = { callsign: 'SWA696', registration: 'N123AB', icao24: 'ae1fa4' };
   assert.equal(formatTrackedEntityLabel(found, 'q'), 'SWA696');

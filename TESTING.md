@@ -10,6 +10,27 @@ This guide covers the work hardened over **4 adversarial-review batches** on
 `feat/annotate-hybrid`. Record a voice note + screenshots as you go; each scenario
 lists what **✅ pass** looks like and (where it applies) the **❌ old bug** it replaces.
 
+## Vessel search and typed commands
+
+Run `node --test src/tooling/vesselLookup.test.mjs src/voice/textCommands.test.mjs
+src/voice/realtimeOwners.test.mjs` on one shell line. The HTTP test supplies
+synthetic AIS records, exceeds the browser row cap, advances time and reloads
+the persisted watchlist. It needs no AIS or OpenAI key.
+
+In the browser, enter a vessel's MMSI, IMO or name in the agent dock. Confirm
+that the AIS layer turns on and the camera frames the ship without starting
+Realtime or requesting a microphone. Search a shared name and choose from the
+pick list. Pin a result, reload, and check the watchlist. A quiet pinned ship
+must show its last-seen age and amber stale styling rather than disappear.
+An unknown number in `Track vessel only` mode must not start an AI session.
+
+For a configured Realtime backend, type a map command such as `Hide the HUD`.
+Confirm that it runs the same tool as speech, shows the reply, and reports
+`MICROPHONE OFF`. Stop before the channel opens and verify that queued text
+never sends later. Test denied microphone permission too; text mode must still
+work. These live AI turns are paid. The unit tests substitute a transport and
+verify receive-only audio, tool dispatch, visible transcripts and cancellation.
+
 ## Focus/horizon moving evidence
 
 With the Vite development server already running on port 4173, capture all four

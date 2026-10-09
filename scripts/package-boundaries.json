@@ -607,6 +607,7 @@
       "src/ui/styles/command-dock-trays.css",
       "src/ui/styles/command-dock-sliding.css",
       "src/ui/styles/voice-cost.css",
+      "src/ui/styles/agent-text.css",
       "src/ui/styles/first-run.css",
       "src/ui/styles/provider-settings.css"
     ],
@@ -1164,6 +1165,8 @@
       "src/voice/commands.js",
       "src/voice/session.js",
       "src/voice/sessionCommands.js",
+      "src/voice/textCommands.js",
+      "src/layers/vessels/recordPolicy.js",
       "src/voice/realtimeSession.js",
       "src/voice/realtimeEvents.js",
       "src/voice/realtimePreferences.js",
@@ -1727,6 +1730,7 @@
       "src/search/presetGeocoder.js",
       "src/voice/session.js",
       "src/voice/sessionCommands.js",
+      "src/voice/textCommands.js",
       "src/voice/realtimeSession.js",
       "src/voice/realtimeEvents.js",
       "src/app/localGeojsonServices.js",
@@ -2430,6 +2434,8 @@
     "exports": ["./voice/session-controls"],
     "modules": [
       "src/voice/sessionCommands.js",
+      "src/voice/textCommands.js",
+      "src/layers/vessels/recordPolicy.js",
       "src/voice/session.js",
       "src/voice/control.js"
     ],

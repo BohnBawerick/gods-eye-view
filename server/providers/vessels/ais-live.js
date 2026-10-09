@@ -10,6 +10,10 @@ import {
   readAisTrack,
   aisStreamRows,
   newestAisPositionAt,
+  lookupAisVessels,
+  readAisWatchlist,
+  setAisVesselPinned,
+  flushAisWatchlist,
 } from './ais-store.js';
 // ---------------------------------------------------------------------------
 // AISStream live vessel cache state
@@ -75,6 +79,48 @@ export function aisLiveProxy() {
       try {
         ensureAisStreamConnection();
         const incoming = new URL(req.url || '', 'http://localhost');
+        const method = req.method || 'GET';
+        const json = (status, payload) => {
+          res.statusCode = status;
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Cache-Control', 'no-store');
+          res.end(JSON.stringify(payload));
+        };
+        if (incoming.pathname === '/watchlist') {
+          if (method === 'GET') return json(200, readAisWatchlist());
+          if (!['PUT', 'DELETE'].includes(method))
+            return json(405, { error: 'Use GET, PUT or DELETE.' });
+          // A custom header requires CORS preflight from other origins. This
+          // route grants no CORS permissions and also rejects cross-site calls.
+          if (
+            req.headers['x-gev-watchlist'] !== '1' ||
+            req.headers['sec-fetch-site'] === 'cross-site' ||
+            (req.headers.origin &&
+              new URL(req.headers.origin).host !== req.headers.host)
+          ) {
+            return json(403, {
+              error: 'Watchlist changes require a same-origin request.',
+            });
+          }
+          const mmsi = incoming.searchParams.get('mmsi') || '';
+          if (!/^\d{9}$/.test(mmsi))
+            return json(400, { error: 'A nine-digit MMSI is required.' });
+          return json(200, setAisVesselPinned(mmsi, method === 'PUT'));
+        }
+        if (method !== 'GET') return json(405, { error: 'Use GET.' });
+        if (incoming.pathname === '/vessel') {
+          const query = (incoming.searchParams.get('q') || '').trim();
+          if (!query || query.length > 120)
+            return json(400, {
+              error: 'Enter a vessel name, MMSI or IMO (up to 120 characters).',
+            });
+          return json(200, {
+            ...lookupAisVessels(query),
+            feed: aisStreamStatusSnapshot().status,
+          });
+        }
+        if (!['/', '', '/track', '/track/'].includes(incoming.pathname))
+          return json(404, { error: 'Unknown AIS route.' });
 
         // Track sub-route MUST be handled before the rows snapshot — this
         // mount prefix-matches every subpath, so without this branch
@@ -117,7 +163,8 @@ export function aisLiveProxy() {
 
         const feed = aisStreamStatusSnapshot();
 
-        res.statusCode = process.env.AISSTREAM_API_KEY ? 200 : 503;
+        res.statusCode =
+          process.env.AISSTREAM_API_KEY || rows.length ? 200 : 503;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
         res.end(
@@ -354,6 +401,11 @@ function startAisStreamWatchdogTick() {
  * pre-disposal handler can never collide with a post-disposal socket.
  */
 function disposeAisStream() {
+  try {
+    flushAisWatchlist();
+  } catch (error) {
+    console.warn('[AISStream]', error.message);
+  }
   if (_aisStreamTickTimer) {
     clearInterval(_aisStreamTickTimer);
     _aisStreamTickTimer = null;

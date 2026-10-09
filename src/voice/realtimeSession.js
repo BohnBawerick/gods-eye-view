@@ -18,6 +18,10 @@ export function createRealtimeSession({
     start: (settings) => controller.start(settings),
     stop: (settings) => controller.stop(settings),
     sendText: (text) => controller.sendTextCommand(text),
+    interrupt() {
+      controller.cancelRadioHandoff({ abortTools: true });
+      controller.supersedeActiveResponseForUserTurn();
+    },
     sendMapEvent: (event) => controller.notifyMapEvent(event),
     ignoreButtonClick: () => Boolean(controller.spaceKeyHeld),
     bindControls() {

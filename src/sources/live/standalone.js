@@ -11,7 +11,11 @@ import {
   readsbSnapshot,
   readsbIdentities,
 } from './aircraft.js';
-import { normalizeVesselTrack, vesselSnapshot } from './vessels.js';
+import {
+  normalizeVesselObservation,
+  normalizeVesselTrack,
+  vesselSnapshot,
+} from './vessels.js';
 
 const defaultFetch = (...args) => globalThis.fetch(...args);
 const header = (response, name) => response.headers?.get?.(name);
@@ -165,13 +169,68 @@ export function createAdsbLolSource({
   };
 }
 
+/** Create snapshot, lookup and deployment-wide watchlist requests for AISStream. */
 export function createAisStreamSource({
   fetchImpl = defaultFetch,
   apiUrl = '/api/ais-live',
   origin = () => globalThis.location?.origin || 'http://localhost',
 } = {}) {
+  async function request(path, params, options = {}) {
+    const url = new URL(apiUrl.replace(/\/$/, '') + path, origin());
+    for (const [key, value] of Object.entries(params))
+      url.searchParams.set(key, String(value));
+    const signal = AbortSignal.any([
+      AbortSignal.timeout(10000),
+      ...(options.signal ? [options.signal] : []),
+    ]);
+    const { response, payload } = await readResponse(
+      fetchImpl,
+      url.toString(),
+      { ...options, signal, cache: 'no-store' },
+      'AIS live',
+    );
+    if (!response.ok)
+      throw new Error(
+        payload?.error || `AIS request failed (${response.status})`,
+      );
+    return payload;
+  }
+  function watchlistResult(payload) {
+    return {
+      ...payload,
+      entries: payload.entries.map((entry) => ({
+        ...entry,
+        vessel: entry.vessel ? normalizeVesselObservation(entry.vessel) : null,
+      })),
+    };
+  }
   return {
     label: 'AISStream',
+    async lookupVessels(query, { signal } = {}) {
+      const payload = await request('/vessel', { q: query }, { signal });
+      return {
+        ...payload,
+        candidates: payload.candidates
+          .map((row) => normalizeVesselObservation(row))
+          .filter(Boolean),
+      };
+    },
+    async getWatchlist({ signal } = {}) {
+      return watchlistResult(await request('/watchlist', {}, { signal }));
+    },
+    async setVesselPinned(mmsi, pinned, { signal } = {}) {
+      return watchlistResult(
+        await request(
+          '/watchlist',
+          { mmsi },
+          {
+            signal,
+            method: pinned ? 'PUT' : 'DELETE',
+            headers: { 'X-GEV-Watchlist': '1' },
+          },
+        ),
+      );
+    },
     async getSnapshot({ maxRows = 12000 } = {}, { signal } = {}) {
       const url = new URL(apiUrl, origin());
       url.searchParams.set('maxRows', String(maxRows));

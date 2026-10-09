@@ -29,6 +29,31 @@ export function createVoiceControl({ reset = false } = {}) {
       <div class="gev-voice-readout">
         <div id="gev-voice-detail">VOICE STANDBY</div>
       </div>
+      <form id="gev-text-form" class="gev-text-form">
+        <label for="gev-text-input">Type to the agent or track a vessel</label>
+        <div class="gev-text-entry">
+          <input id="gev-text-input" name="command" type="text" maxlength="2000" autocomplete="off" placeholder="Ship name, MMSI, IMO or command" />
+          <button type="submit">Send</button>
+        </div>
+        <div class="gev-text-options">
+          <select id="gev-text-mode" aria-label="Command mode">
+            <option value="auto">AI + vessel lookup</option>
+            <option value="vessel">Track vessel only</option>
+          </select>
+          <button id="gev-agent-toggle" type="button" aria-expanded="false" aria-controls="gev-agent-panel">Replies / watchlist</button>
+        </div>
+      </form>
+      <section id="gev-agent-panel" class="gev-agent-panel" aria-label="Agent replies and vessel watchlist" hidden>
+        <div class="gev-agent-panel-heading"><strong>Agent / vessels</strong><button id="gev-agent-close" type="button" aria-label="Close replies and watchlist">Close</button></div>
+        <p class="gev-agent-note">Vessel lookups are free. AI turns use the selected paid model. Typing never starts the microphone.</p>
+        <div id="gev-text-log" role="log" aria-live="polite" aria-label="Conversation"></div>
+        <p id="gev-text-status" role="status"></p>
+        <div id="gev-vessel-results" aria-label="Vessel search results"></div>
+        <h3>Watchlist</h3>
+        <p class="gev-agent-note">Shared on this server. Last known positions kept for 7 days.</p>
+        <div id="gev-vessel-watchlist"></div>
+        <p class="gev-agent-note">Vessel positions: <a href="https://aisstream.io" target="_blank" rel="noopener noreferrer">AISStream.io</a>. Reception can be incomplete.</p>
+      </section>
       <div id="gev-voice-help" class="gev-voice-help-tray" role="tooltip">
         <span class="gev-voice-help-kicker">VOICE CONTROL</span>
         <span class="gev-voice-help-detail">Hold Space to speak · tap Space to activate focused controls</span>
@@ -68,5 +93,15 @@ export function createVoiceControl({ reset = false } = {}) {
     errorDetail: root.querySelector('#gev-voice-error-detail'),
     tierButton: root.querySelector('#gev-voice-tier'),
     costValue: root.querySelector('#gev-voice-cost-value'),
+    textForm: root.querySelector('#gev-text-form'),
+    textInput: root.querySelector('#gev-text-input'),
+    textMode: root.querySelector('#gev-text-mode'),
+    textLog: root.querySelector('#gev-text-log'),
+    textStatus: root.querySelector('#gev-text-status'),
+    agentPanel: root.querySelector('#gev-agent-panel'),
+    agentToggle: root.querySelector('#gev-agent-toggle'),
+    agentClose: root.querySelector('#gev-agent-close'),
+    vesselResults: root.querySelector('#gev-vessel-results'),
+    vesselWatchlist: root.querySelector('#gev-vessel-watchlist'),
   };
 }

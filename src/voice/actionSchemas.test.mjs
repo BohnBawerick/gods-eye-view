@@ -15,13 +15,13 @@ const stable = (value) =>
         )
       : value;
 
-test('the complete Realtime tool payload retains its pre-extraction contract and wording', () => {
+test('the complete Realtime tool payload includes the vessel lookup wording', () => {
   const digest = createHash('sha256')
     .update(JSON.stringify(stable(GEV_REALTIME_TOOLS)))
     .digest('hex');
   assert.equal(
     digest,
-    '956381c3456d3644ed7c9cda72910dc68a34d9191e0b3e414ee200c348245214',
+    'db30d2a70f7b6ecd8d361c4b40cf7ea9b2a08dd76daa016abf49f292b0702ebd',
   );
 });
 

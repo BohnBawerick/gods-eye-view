@@ -556,13 +556,13 @@ test('the full-width context rail clears the required credit at every modelled v
   assert.deepEqual(failures, [], `context rail re-enters the credit band at ${failures.join(', ')}`);
 });
 
-test('the dock anchor changes at 720px — the 2vh cancellation is band-limited', () => {
-  assert.equal(resolve(['#command-dock'], 'bottom', 800, 'dock').decl.value, '2vh');
-  assert.equal(resolve(['#command-dock'], 'bottom', 720, 'dock').decl.value, '8px');
+test('the typed-command dock clears the credit band at narrow widths', () => {
+  assert.equal(resolve(['#command-dock'], 'bottom', 800, 'dock').decl.value, 'calc(2vh + 7.5rem)');
+  assert.equal(resolve(['#command-dock'], 'bottom', 720, 'dock').decl.value, 'calc(2vh + 7.5rem)');
   assert.equal(
     resolve(CREDIT_SELECTORS, 'bottom', 720, 'credit').decl.value,
     'calc(2vh + 5rem)',
-    'the credit keeps its 2vh base below 720px — that asymmetry is the whole hazard',
+    'the credit retains its anchor while the larger dock moves above it',
   );
 });
 

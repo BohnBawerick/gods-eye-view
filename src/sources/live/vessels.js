@@ -23,6 +23,8 @@ export function normalizeVesselObservation(row, reference = null) {
       epoch(row.last_position_epoch, 1000) ??
       epoch(Date.parse(row.last_position_UTC)),
     altitudeDatum: 'sea-surface',
+    pinned: row.pinned === true,
+    stale: row.stale === true,
   };
 }
 
