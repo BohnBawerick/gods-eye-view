@@ -1,5 +1,34 @@
 # God's Eye View Current State
 
+The agent dock accepts typed commands as well as speech. Typing starts Realtime
+with receive-only audio and never calls `getUserMedia`; replies appear in the
+conversation panel. Stop the text session before pressing MIC to switch to
+speech. AI turns use the existing model tier and spend guard. Vessel names,
+MMSIs and IMOs first search the full server cache without starting AI. Select
+`Track vessel only` to prevent unmatched text from starting a paid AI turn.
+
+`GET /api/ais-live/vessel?q=` returns up to 25 ranked candidates plus the total
+match count. Ambiguous names produce a pick list instead of choosing a ship.
+Tracking enables AIS vessels, admits an off-window match and frames its position.
+The voice `track_entity` tool uses the same lookup and returns ambiguous
+candidates to the dock. A cancelled lookup cannot move the camera later.
+
+The shared vessel watchlist starts with MMSI 259069000. Pin and Unpin persist
+through `/api/ais-live/watchlist`; mutations require PUT/DELETE, a nine-digit
+MMSI and the same-origin `X-GEV-Watchlist: 1` header. Pins are deployment-wide,
+not private browser preferences, and are capped at 100. Watched positions stay
+for seven days and accompany every snapshot outside the ordinary row cap.
+Positions older than 30 minutes show amber markers and last-seen text; static
+AIS messages do not refresh position age. Unknown or expired pins remain listed
+without an invented location. No additional data provider is used.
+
+The server writes `.gev-cache/vessel-watchlist.json` atomically, coalescing
+position writes for one second. Keep that file on persistent storage to survive
+container replacement. `GEV_VESSEL_WATCHLIST_FILE` overrides its path;
+`GEV_VESSEL_WATCHLIST` supplies comma-separated MMSIs for a new file, defaulting
+to `259069000`. An existing file owns subsequent pin choices. Read-only or
+corrupt storage reports an error rather than claiming that changes were saved.
+
 Vessel snapshot completeness is separate from freshness. A current snapshot with
 rejected or duplicate records shows PARTIAL with accepted/received counts; stale
 or unknown freshness and transport failures retain their warnings. Partial

@@ -1,5 +1,6 @@
 import { createVoiceControl } from './control.js';
 import { createVoiceSession } from './session.js';
+import { bindTextCommands } from './textCommands.js';
 
 /** Bind common controls to a supplied voice-session adapter. */
 export function createVoiceCommands({
@@ -56,6 +57,12 @@ export function createVoiceCommands({
           : '';
     if (event.state === 'error') ui.root.classList?.remove('error-dismissed');
   });
+  const unbindText = bindTextCommands({
+    ui,
+    session,
+    runner,
+    vessels: dataManager?.layers?.get('ais-live-vessels')?.module,
+  });
   const annotationUnsubscribe = annotations?.onOutlineEvent?.((event) => {
     session.sendMapEvent({ type: 'map_annotation_outline', ...event });
   });
@@ -70,6 +77,7 @@ export function createVoiceCommands({
     () => {
       ui.button.removeEventListener('click', buttonHandler);
       annotationUnsubscribe?.();
+      unbindText();
       updateStatus();
       ui.root.remove();
     },
@@ -78,6 +86,7 @@ export function createVoiceCommands({
   if (session.disposed) {
     ui.button.removeEventListener('click', buttonHandler);
     annotationUnsubscribe?.();
+    unbindText();
     updateStatus();
     ui.root.remove();
   } else adapter.bindControls?.();

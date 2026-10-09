@@ -1,0 +1,241 @@
+/* Typed commands share the voice dock and its existing palette. */
+#command-dock {
+  --dock-voice-width: clamp(20rem, 32vw, 28rem);
+}
+
+#command-dock > #gev-voice-control {
+  grid-template-columns: 3rem minmax(0, 1fr);
+  grid-template-rows: 1rem 1rem auto;
+  height: auto;
+  margin: 0;
+  padding: 0.6rem;
+}
+
+#command-dock #gev-voice-button {
+  grid-row: 1 / 3;
+  height: 2.5rem;
+}
+
+#command-dock .gev-mic-orbit {
+  width: 1.8rem;
+  height: 1.8rem;
+  flex-basis: 1.8rem;
+}
+
+#command-dock .gev-voice-heading {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+#command-dock .gev-voice-readout,
+#command-dock #gev-voice-control[data-status='error'] .gev-voice-readout {
+  display: block;
+  grid-column: 2;
+  grid-row: 2;
+}
+
+#command-dock #gev-voice-detail {
+  font-size: 0.6rem;
+}
+
+#command-dock .gev-voice-visualizer {
+  display: none;
+}
+
+.gev-text-form {
+  grid-column: 1 / -1;
+  grid-row: 3;
+  display: grid;
+  gap: 0.4rem;
+  min-width: 0;
+  margin-top: 0.55rem;
+  color: #d6e9ef;
+  font: 0.75rem / 1.4 var(--font-mono);
+}
+
+.gev-text-entry,
+.gev-text-options,
+.gev-agent-panel-heading,
+.gev-vessel-result > div {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.gev-text-options,
+.gev-agent-panel-heading {
+  justify-content: space-between;
+}
+
+.gev-text-form input,
+.gev-text-form select,
+.gev-text-form button,
+.gev-agent-panel button {
+  min-height: 2rem;
+  padding: 0.35rem 0.5rem;
+  border: 1px solid #51707e;
+  border-radius: 0.2rem;
+  background: #102632;
+  color: #e3f2f7;
+  font: inherit;
+}
+
+.gev-text-form input {
+  width: 100%;
+  min-width: 0;
+  caret-color: var(--accent);
+}
+
+.gev-text-form input::placeholder {
+  color: #acbfca;
+}
+
+.gev-text-form select {
+  min-width: 0;
+  max-width: 54%;
+}
+
+.gev-text-form button,
+.gev-agent-panel button {
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.gev-text-form button:hover,
+.gev-agent-panel button:hover {
+  background: #214451;
+}
+
+.gev-text-form :focus-visible,
+.gev-agent-panel :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.gev-agent-panel button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.gev-agent-panel {
+  position: absolute;
+  bottom: calc(100% + 0.6rem);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  box-sizing: border-box;
+  width: min(30rem, calc(100vw - 1.5rem));
+  max-height: min(65vh, calc(100dvh - 15rem));
+  padding: 1rem;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: #51707e #0c202b;
+  background: #0c202b;
+  color: #e3f2f7;
+  border: 1px solid #51707e;
+  border-radius: 0.4rem;
+  font: 0.8rem / 1.5 var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.gev-agent-panel[hidden] {
+  display: none;
+}
+
+.gev-agent-panel p {
+  margin: 0.4rem 0;
+}
+
+.gev-agent-panel h3 {
+  margin: 1.25rem 0 0.3rem;
+  font-size: 0.9rem;
+}
+
+.gev-agent-note {
+  color: #acbfca;
+  font-size: 0.72rem;
+}
+
+.gev-agent-panel a {
+  color: #83dced;
+  text-underline-offset: 3px;
+}
+
+.gev-vessel-result {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid #35505e;
+  font-variant-numeric: tabular-nums;
+}
+
+.gev-vessel-result[data-stale='true'] > strong,
+.gev-vessel-result[data-stale='true'] > p:last-of-type {
+  color: #e5b86e;
+}
+
+#gev-text-log {
+  white-space: pre-wrap;
+}
+
+#command-dock
+  #gev-voice-control:has(.gev-agent-panel:not([hidden]))
+  .gev-voice-help-tray,
+#command-dock
+  #gev-voice-control:has(.gev-agent-panel:not([hidden]))
+  .gev-voice-error-tray {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  #command-dock {
+    bottom: calc(2vh + 7.5rem);
+  }
+}
+
+@media (max-width: 720px) {
+  #command-dock {
+    --dock-voice-width: calc(100vw - 1.5rem);
+    --dock-side-compact: calc((100vw - 1.5rem) / 2);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    width: calc(100vw - 1.5rem);
+    max-width: none;
+  }
+
+  #command-dock > #gev-voice-control {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: auto;
+  }
+
+  #command-dock > #location-bar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  #command-dock > #control-panel {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  #command-dock :is(.panel-inner, .location-inner) {
+    min-height: 2rem;
+  }
+
+  #command-dock #location-bar .location-toolbar-label,
+  #command-dock #control-panel .panel-title {
+    max-width: none;
+  }
+
+  #command-dock #location-bar .dock-popover-content {
+    left: 0;
+  }
+
+  #command-dock #control-panel .dock-popover-content {
+    right: 0;
+  }
+
+  .gev-agent-panel {
+    bottom: calc(100% + 4.5rem);
+    max-height: calc(100dvh - 30rem);
+  }
+}

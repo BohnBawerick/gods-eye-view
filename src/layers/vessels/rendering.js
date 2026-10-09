@@ -1,4 +1,5 @@
 import * as Cesium from 'cesium';
+import { isVesselStale } from './recordPolicy.js';
 import {
   vesselTypeCss,
   vesselOverlayCohortLimit,
@@ -178,7 +179,11 @@ export function createRendering({
    */
 
   function shipIcon(record, selected) {
-    const cssColor = selected ? '#ffffff' : vesselTypeCss(record.type);
+    const cssColor = isVesselStale(record)
+      ? '#e5b86e'
+      : selected
+        ? '#ffffff'
+        : vesselTypeCss(record.type);
     const key = `${cssColor}:${selected ? 'selected' : 'normal'}`;
     if (vesselState.shipIconCache.has(key))
       return vesselState.shipIconCache.get(key);
@@ -236,6 +241,10 @@ export function createRendering({
         const visible = isVisible(visual.surfacePosition, occluder);
         if (visual.billboard) {
           visual.billboard.show = visible;
+          visual.billboard.image = shipIcon(
+            record,
+            record === state.selectedRecord,
+          );
           if (visible && doRotations && scene) {
             const rot = screenProjectedRotation(
               scene,
@@ -253,6 +262,8 @@ export function createRendering({
         }
         if (visible) labelCandidates.push(record);
       }
+      if (state.selectedRecord)
+        components.cards.updateSelectedVesselHud(state.selectedRecord);
       updateClusteredLabels(labelCandidates);
     }
     if (focusPass && scene && camera) {

@@ -320,13 +320,13 @@ export const ACTION_DESCRIPTIONS = {
   },
   track_entity: {
     description:
-      'Find and follow a specific aircraft (callsign/ICAO hex), ship (name/MMSI), or satellite (name/NORAD id) on enabled layers. Camera follows the entity.',
+      'Find and follow an aircraft (callsign/ICAO hex) or satellite (name/NORAD id) on enabled layers. For a ship, search name/MMSI/IMO across the whole AIS cache, enable vessels and frame its last known position. Multiple matches return candidates: ask the user to choose by MMSI. Report stale and observedAtMs honestly; a ship position is not a live fix when stale.',
     $position: 1,
     parameters: {
       properties: {
         query: {
           description:
-            'Callsign, ship name, satellite name, ICAO hex, MMSI, or NORAD id.',
+            'Callsign, ship name, satellite name, ICAO hex, MMSI, IMO, or NORAD id.',
           $position: 1,
         },
         layerId: {

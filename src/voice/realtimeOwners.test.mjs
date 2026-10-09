@@ -22,6 +22,7 @@ function browser(t) {
   class Peer {
     constructor() { this.connectionState = 'connected'; peers.push(this); }
     addTrack() {}
+    addTransceiver(kind, options) { this.transceiver = { kind, ...options }; }
     createDataChannel() {
       this.channel = {
         readyState: 'open', handlers: new Map(), sent: [],
@@ -49,6 +50,38 @@ function browser(t) {
   });
   return { peers, streams, Peer };
 }
+
+test('typed Realtime sessions work without mediaDevices and dispatch the same tools', async (t) => {
+  const { peers, streams } = browser(t);
+  delete navigator.mediaDevices;
+  const actions = [];
+  const events = [];
+  const ui = { root: { dataset: {}, classList: { remove() {} }, querySelectorAll: () => [] }, status: {}, detail: {} };
+  const controller = new GevRealtimeController({
+    runner: async (name, args) => { actions.push([name, args]); return { ok: true }; },
+    onSessionEvent: event => events.push(event),
+    backend: { async requestToken() { return { token: 'synthetic', model: resolveVoiceModel('mini').id }; }, async negotiate() { return 'answer'; } },
+    debugSink: null, ui,
+  });
+  t.after(() => controller.stop());
+  await controller.start({ textOnly: true });
+  const peer = peers[0];
+  assert.deepEqual(peer.transceiver, { kind: 'audio', direction: 'recvonly' });
+  assert.equal(streams.length, 0);
+  peer.channel.handlers.get('open')();
+  assert.equal(ui.status.textContent, 'READY');
+  assert.equal(ui.detail.textContent, 'MICROPHONE OFF');
+  controller.sendTextCommand('turn on HUD');
+  assert.equal(peer.channel.sent[0].item.content[0].text, 'turn on HUD');
+  assert.equal(peer.channel.sent[1].type, 'response.create');
+  await peer.channel.handlers.get('message')({ data: JSON.stringify({ type: 'response.function_call_arguments.done', name: 'set_hud', call_id: 'typed', arguments: '{"enabled":true}' }) });
+  assert.deepEqual(actions, [['set_hud', { enabled: true }]]);
+  await peer.channel.handlers.get('message')({ data: JSON.stringify({ type: 'response.output_audio_transcript.done', transcript: 'HUD is on.', item_id: 'reply', response_id: 'r' }) });
+  assert.ok(events.some(event => event.type === 'transcript' && event.text === 'HUD is on.'));
+  controller.stop();
+  assert.equal(peer.connectionState, 'closed');
+  assert.equal(controller.audioEl, null);
+});
 
 test('retained peer and channel callbacks cannot act after stop or enter a replacement session', async (t) => {
   const { peers, streams } = browser(t);
